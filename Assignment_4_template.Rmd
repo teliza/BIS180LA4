@@ -1,0 +1,238 @@
+---
+title: "Assignment 4"
+output: html_notebook, pdf_notebook
+---
+
+Student Name: Eliza Tsang
+Student ID: 999606858
+
+## Assignment 4: Rice SNPs and GWAS
+
+This should be a knittable .Rmd file.  Include this file, a .pdf and a .html when you turn in the assignment.
+
+**EXERCISE 1:** Is there any evidence for populations structure (different sub populations)?  If so, how many sub populations do you think the MDS plot reveals?  What do you make of the individuals that are between the major groups? (Include your plot and code)
+
+```{r}
+plot(geno.mds)
+```
+
+Yes, there looks to be 3 groups, and some interspersed in between. Perhaps the dots in the middle are a result of a few of the subpopulation members mixing for a short while.
+
+**EXERCISE 2:** 
+
+* Use the `read.csv()` `head()` and `summary()` functions that you learned earlier to import and look at this file.  Import the file into an object called "data.pheno".
+* Use merge() to merge the MDS scaled genotype data with the phenotype data.  Here the column that we are merging on is the "row.name" column.  So you can use `by="row.names"` or `by=1` in your call to merge.  Use summary and head to look at the new object and make sure that it is as you expect.
+* Include your code in the .Rmd
+
+```{r}
+data.pheno<-read.csv("/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/RiceDiversity.44K.MSU6.Phenotypes.csv", row.names=1)
+data.pheno
+mergegenodata<-merge(geno.mds, data.pheno, by="row.names")
+mergegenodata
+```
+
+
+**EXERCISE 3:** Prepare three different plots to explore if subgroups vary by 1) Amylose content; 2) Pericarp color; 3) Region.  Do any of these seem to be associated with the different population groups? Briefly discuss.
+
+*Hint 1* use `color=` argument to `qplot` or `ggplot` to color the point by the different traits  
+*Hint 2* use `size=I(3)` as an argument to increase the point size (you can play with different values)  
+*Hint 3* when plotting the Region data, the colors will be easier to interpret if you include the following at the end of the line with your qplot command: ` + scale_color_brewer(type="div")` This specifies that a diverging set of colors is used.  (Try plotting with and without this).
+
+```{r}
+qplot(V1, V2, data=mergegenodata, color=Amylose.content, size=I(3))
+qplot(V1, V2, data=mergegenodata, color=Pericarp.color, size=I(3))
+qplot(V1, V2, data=mergegenodata, color=Region, size=I(3)) +scale_color_brewer(type="div") 
+```
+
+Amylose content is higher on the two left subpopulations and a lower on the right one.
+With pericarp color, it is mostly light on top 2, more mixed on the bottom left.
+The right subpopulation seems to originate from Africa and America, with some from Asia and the Mid East. The subpopulation on the bottome left is mostly S. Asian and finally the top left is the most mixed.
+
+**EXERCISE 4:** Re plot the MDS data, but include the population assignment in an informative way.  How do the populations assignments relate to the MDS plot?
+
+```{r}
+data.geno.2500.c <- apply(data.geno.2500,2,as.character)
+
+data.geno.2500.ps <- matrix("",nrow=nrow(data.geno.2500.c)*2,ncol=ncol(data.geno.2500.c))
+
+for (i in 1:nrow(data.geno.2500.c)) {
+  data.geno.2500.ps[(i-1)*2+1,] <- substr(data.geno.2500.c[i,],1,1)
+  data.geno.2500.ps[(i-1)*2+2,] <- substr(data.geno.2500.c[i,],2,2)
+}
+
+library(PSMix)
+
+load("/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/ps4.2500.RData")
+names(ps4) 
+head(ps4$AmPr)
+round(head(ps4$AmPr),3) 
+
+head(ps4$AmId)
+
+table(ps4$AmId)
+
+ps4.df <- as.data.frame(cbind(round(ps4$AmPr,3),ps4$AmId))
+head(ps4.df) 
+colnames(ps4.df) <- c(paste("pop",1:(ncol(ps4.df)-1),sep=""),"popID")
+head(ps4.df) 
+
+maxGenome <- apply(ps4$AmPr,1,max)
+maxGenome
+
+ps4.df <- ps4.df[order(ps4.df$popID,-maxGenome),]
+
+ps4.df$sampleID <- factor(1:413)
+head(ps4.df)
+
+library(reshape2)
+ps4.df.melt <- melt(ps4.df,id.vars=c("popID","sampleID"))
+head(ps4.df.melt)
+
+library(ggplot2)
+
+pl <- ggplot(aes(x=sampleID, y=value, color=variable, fill=variable), data=ps4.df.melt)
+pl <- pl + geom_bar(stat="identity")
+pl <- pl + ylab("genome proportion") + scale_color_brewer(type="div") + scale_fill_brewer(type="div")
+
+pl
+
+geno.mds$popID <- factor(ps4$AmId) 
+head(geno.mds$popID)
+
+colnames(ps4$AmPr) <- paste("pr",1:4,sep="")
+
+geno.mds2 <- cbind(geno.mds,ps4$AmPr)
+head(geno.mds)
+
+plot(geno.mds2)
+qplot(V1, V2, data=geno.mds2, color=popID, size=I(2))
+save(data.pheno,geno.mds2,file="data_from_SNP_lab.Rdata")
+```
+pop3 and pop4 are separate subpopulations overall while pop1 and pop2 look to have merged as one subpopulation for the most part.
+
+**Exercise 5:** 
+
+* Plot your chosen trait data
+  * as a **single histogram** for all of the data
+  * as **separate histograms** for each of the 4 population assignments made by PSMix
+  * as a **boxplot** separated by population. 
+* Based on these histograms do you think that your trait varies by population? 
+* **BONUS** Try using the "violin" geom.  What is this showing?
+  
+Hint: you will need to use a different binwidth (or don't specify it at all and let R choose the default).  Hint: the relevant column names for population are "popID".  
+
+```{r}
+pl3 <- ggplot(data=data.pheno.mds,aes(x=Region,y=Flowering.time.at.Faridpur)) + geom_boxplot()
+pl3
+
+pl2 <- ggplot(data=data.pheno.mds,aes(x=Flowering.time.at.Faridpur))
+pl2 <- pl2 + geom_histogram(binwidth=5) 
+pl2 <- pl2 + facet_wrap(facets= ~ popID, ncol=3) 
+pl2 <- pl2 + ggtitle("Faridpur Flowering Time") 
+pl2
+
+pl4 <- ggplot(data.pheno.mds,aes(x=Flowering.time.at.Faridpur)) + geom_histogram()
+pl4
+
+pl5<- ggplot(data=data.pheno.mds,aes(x=popID,y=Flowering.time.at.Faridpur)) + geom_violin()
+pl5
+```
+Yes, from the histograms, it does seem to vary a bit by population. From longest to shortest average flowering time is: 1, 3, 4, then 2. The violin plot is a easier to read (similar to a box plot) in terms of finding the average time per population.  From the violin plot, I can see that pop1 has the greatest range and indeed a great number within the highest average flowering time. Pop3 and pop4 are very close, with pop4 having the greater range while pop3 has a very slightly higher average flowering time. Most of pop2 has the lowest flowering time compared to the other populations. But there are some with even lower times, and some as high as matching pop1's average flowering time.
+
+**Exercise 6:** 
+
+* Obtain the mean of your trait for each of the 4 PSMix populations.
+* Perform an ANOVA for your trait to test if it varies significantly by population.  Show your code, the ANOVA output, and provide an interpretation.
+* Discuss: Do your results present a problem for GWAS?
+
+```{r}
+mean(data.pheno.mds$Flowering.time.at.Faridpur,na.rm=T)
+
+tapply(X=data.pheno.mds$Flowering.time.at.Faridpur,INDEX=data.pheno.mds$popID,FUN=min,na.rm=T)
+aov2 <- aov(Flowering.time.at.Faridpur ~ popID,data=data.pheno.mds)
+summary(aov2)
+```
+
+[1] 71.77049
+ 1  2  3  4 
+46 39 54 50 
+             Df Sum Sq Mean Sq F value   Pr(>F)    
+popID         3   3544  1181.2   19.25 1.91e-11 ***
+Residuals   301  18472    61.4                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+108 observations deleted due to missingness
+
+----------------------
+
+The overall mean flowering time is 71.77. We then apply to the whole set the data we want to summerize. Our degree of freedom is 3 since there are 4 populations. This will help us determine the significance of our p-value. Some of the observations are missing. The p-value is significant. But the population structure may affect our GWAS without including the kinship matrix.
+
+**Exercise 7:** Describe and discuss the differences in the analysis with and without population structure correction.  Which do you think is the better one to follow-up on, and why?
+
+```{r}
+snpinfo <- read.csv("/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/snpInfo.csv",row.names=1)
+
+head(snpinfo)
+
+data.geno <- read.csv("/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/Rice_44K_genotypes.csv.gz", row.names=1, na.strings=c("NA","00")) 
+
+
+head(data.pheno.mds) 
+rownames(data.pheno.mds) <- data.pheno.mds$Row.names
+data.geno.pheno <- merge(data.pheno.mds,data.geno,by="row.names")
+```
+
+```{r}
+library(SNPassoc) 
+
+data.geno.pheno3 <- data.geno.pheno[,c(1:47,grep("X3_",colnames(data.geno.pheno)))]
+snpinfo3 <- snpinfo[snpinfo$chr==3,]
+
+snps3 <- setupSNP(data.geno.pheno3,48:ncol(data.geno.pheno3),sort=T,info=snpinfo3,sep="")
+```
+
+```{r}
+#analysis without population structure correction
+wg3 <- WGassociation(Flowering.time.at.Faridpur,data=snps3,model="co",genotypingRate=50)
+plot(wg3,print.label.SNPs=FALSE)
+
+sum(codominant(wg3) < 1e-5)
+```
+
+```{r}
+qqpval(codominant(wg3)) 
+
+#analysis with population structure correction:
+wg3.corrected <- WGassociation(Alu.Tol ~ pr1 + pr2 + pr3 + pr4,data=snps3,model="co",genotypingRate=50)
+
+plot(wg3.corrected,print.label.SNPs=FALSE)
+sum(codominant(wg3.corrected) < 1e-5)
+
+qqpval(codominant(wg3.corrected))
+
+snpinfo3[codominant(wg3.corrected) < 1e-5,]
+
+cbind(snpinfo3[codominant(wg3.corrected) < 1e-5,],codominant(wg3.corrected)[codominant(wg3.corrected) < 1e-5])
+```
+
+There may be many false positives and so we compare our observed data against the expected line. We should have the two lines of data match (blue for observed and red for expected)
+In our first plot, we see a large inflation in p-values, so we can suspect that there are confounding variables. In the second plot, it still does not match but it is much closer than without correction.
+
+The p-values differ more greatly without the population structure correction, so we should follow up after corrections are made in order for more accurate analysis.
+
+
+**Exercise 8:** Look for genes close to your SNP at the [rice genome browser](http://rice.plantbiology.msu.edu/cgi-bin/gbrowse/rice/).  Pick a significant SNP from your analysis and enter its chromosome and position in the search box.  The browser wants you to enter a start and stop position, so for example, you should enter "Chr3:30449857..30449857" and then choose "show 20kb" from the pulldown menu on the left hand side.  Report the SNP you chose and the three closest genes.  These are candidate genes for determining the phenotype of your trait of interest in the rice population.  Briefly discuss these genes as possible candidates for the GWAS peak.  (Include a screenshot of the genome browser)
+
+```{r}
+knitr::include_graphics("~/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/Rice_Genome_SNP.png")
+```
+(If this doesn't work, I've uploaded the screenshot into the git folder RiceSNPData as "Rice_Genome_SNP.png")
+
+I chose: [13279] Chr3	at position 27639188.
+LOC_Os03g48471
+LOC_Os03g48480
+LOC_Os03g48490
+
+Being close to the SNP, they could either have an effect or just simply be carried with the SNP loci during recombination. 
+These genes are expressed in the thioesterase family protein. It aids in biological/metabolic processes. My SNP may also then be related in the expression of this protein. A metabolic process that controls flowering time could be changed by the SNP.
+

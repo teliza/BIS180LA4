@@ -1,0 +1,495 @@
+---
+title: "Assign4 Notebook"
+output:
+  html_notebook: default
+  html_document: default
+---
+```{r}
+RiceSNP<-unzip("~/Downloads/RiceSNPData.zip")
+RiceSNP
+```
+
+```{r}
+fruit.size <- read.csv("./RiceSNPData/fruit_size.csv")
+fruit.color <- read.csv("./RiceSNPData/fruit_color.csv")
+fruit.shape <- read.csv("./RiceSNPData/fruit_shape.csv")
+
+fruit.color
+fruit.shape
+```
+
+```{r}
+fruit.color.shape<-merge(fruit.color, fruit.shape, by="fruit")
+fruit.color.shape
+?merge
+```
+PRACTICE 1:
+
+a. What does “by” do? In the command above (hint: look at the help page for merge())
+
+"by" specifies the columns used for merging, in this case we merged and aligned the data by "fruit"
+
+b. Why are there only seven rows in the merged data set even though fruit.shape had nine? Read the help page for merge() to figure out how to keep all of the data in the original fruit.shape data sheet.
+
+fruit.color only had 7 of the fruits.
+```{r}
+fruit.color.shape<-merge(fruit.color, fruit.shape, by="fruit", all.x=TRUE, all=TRUE, incomparables=NULL)
+fruit.color.shape
+```
+
+c. Merge fruit.size with fruit.color.shape, keeping all of the rows from each original sheet. Place the merged dataframe in fruit.all. Note that the column that you want to merge on for fruit size has a different name. Read help on merge() to figure out how to deal with this.
+```{r}
+colnames(fruit.size)<-c("fruit", "size")
+fruit.all<-merge(fruit.color.shape, fruit.size,(by="fruit"), all.x=TRUE, all.y=TRUE, all=TRUE, incomparables=NULL)
+fruit.all
+```
+```{r}
+sort(fruit.shape$fruit)
+sort(fruit.shape$fruit,decreasing=T)
+order(fruit.shape$fruit)
+```
+
+PRACTICE 2: reorder fruit.all so that the whole data.frame is sorted by fruit shape. Include the code. Your output should look like:
+
+##         fruit  color  shape        size
+## 2     bananna yellow oblong      medium
+## 4    eggplant purple oblong       large
+## 5       grape  green oblong       small
+## 9        pear   <NA>  other      medium
+## 1       apple    red  round      medium
+## 3   blueberry   blue  round  very small
+## 6       peach yellow  round      medium
+## 7      tomato    red  round        <NA>
+## 8   nectarine   <NA>  round      medium
+## 10 watermelon   <NA>   <NA> extra large
+
+```{r}
+fruit.allshape.order<-order(fruit.all$shape)
+fruit.all[order(fruit.all$shape),]
+```
+
+PRACTICE 3: reorder fruit.all so that the whole data.frame is sorted by fruit size, then by fruit shape. Include the code. (hint: look at help for order) Your output should look like:
+
+##         fruit  color  shape        size
+## 10 watermelon   <NA>   <NA> extra large
+## 4    eggplant purple oblong       large
+## 2     bananna yellow oblong      medium
+## 9        pear   <NA>  other      medium
+## 1       apple    red  round      medium
+## 6       peach yellow  round      medium
+## 8   nectarine   <NA>  round      medium
+## 5       grape  green oblong       small
+## 3   blueberry   blue  round  very small
+## 7      tomato    red  round        <NA>
+
+
+```{r}
+library(reshape2)
+fruit.all
+fruit.all.melt <- melt(fruit.all,id.var="fruit")
+fruit.all.melt
+```
+
+PRACTICE 4: find the mean of each column of m
+```{r}
+m <- matrix(rnorm(24),ncol=6) 
+apply(m,1,min)
+apply(m,1,mean)
+```
+
+___4/28/17 Notes___
+
+Wide Format: |Variety|Root|Flower|Amylose|
+            |:--:|:--:|:--:|:--:|
+            |1|25|46|0.1|
+            |2|30|8|0.3|
+            
+Long Format: for each row, convert first row from wide to long format=3 rows (Each variable/observation gets a row)
+
+*use melt*
+
+|Variety|Variable|Value
+            |:--:|:--:|:--:|
+            |1|Root|25|
+            |1|Flower|46|
+            |1|Amylose|0.1|
+            |2|Root|30|
+            |2|Flower|8|
+            |2|Amylose|0.3|
+
+# Real-data Exercises
+```{r}
+data.geno <- read.csv("/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/Rice_44K_genotypes.csv.gz",
+                      row.names=1,  
+                      na.strings=c("NA","00"))
+```
+
+```{r}
+head(data.geno[,1:20])
+summary(data.geno[,1:20]) 
+```
+
+```{r}
+data.geno.2500<-data.geno[sample (ncol(data.geno), 2500)]
+dim(data.geno.2500)
+```
+
+#convert the data matrix to numbers
+geno.numeric <- data.matrix(data.geno.2500)
+head(geno.numeric[,1:20])
+
+#calculate the Euclidian distance between each rice variety
+genDist <- as.matrix(dist(geno.numeric))
+
+#perform the multi-dimensional scaling
+geno.mds <- as.data.frame(cmdscale(genDist))
+head(geno.mds) #now we have 2 dimensions
+```{r}
+geno.numeric<-data.matrix(data.geno.2500)
+head(geno.numeric[,1:20])
+genDist<-as.matrix(dist(geno.numeric))
+geno.mds<-as.data.frame(cmdscale(genDist))
+head(geno.mds)
+```
+geno.mds contains the genotypic information rescaled to display in two dimensions. Now lets plot it. Use one of the plotting functions that you learned about last week to make a x-y scatter plot of the data, with “V1” on one axis and “V2” on the other axis.
+
+EXERCISE 1: Is there any evidence for populations structure (different sub populations)? If so, how many sub populations do you think the MDS plot reveals? What do you make of the individuals that are between the major groups?
+
+```{r}
+plot(geno.mds)
+```
+
+Yes it looks like there's a group of 3 subpopulations. Perhaps the dots in the middle are a result of a few of the subpopulation members mixing for a short while?
+
+
+The file “RiceDiversity.44K.MSU6.Phenotypes.csv” contains information about the country of origin and phenotypes of most of these varieties.
+
+EXERCISE 2:
+
+Use the read.csv() head() and summary() functions that you learned earlier to import and look at this file. Import the file into an object called “data.pheno”. Be sure to include the row.names=1 argument when you call read.csv()
+Use merge() to merge the MDS scaled genotype data with the phenotype data. Here the column that we are merging on is the “row.name” column. So you can use by="row.names" or by=0 in your call to merge. Use summary and head to look at the new object and make sure that it is as you expect.
+Include your code in the .Rmd
+We can now color points on our plot by characteristics in this data set.
+
+```{r}
+data.pheno<-read.csv("/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/RiceDiversity.44K.MSU6.Phenotypes.csv", row.names=1)
+data.pheno
+mergegenodata<-merge(geno.mds, data.pheno, by="row.names")
+mergegenodata
+```
+
+EXERCISE 3: Prepare three different plots to explore if subgroups vary by 1) Amylose content; 2) Pericarp color; 3) Region. Do any of these seem to be associated with the different population groups? Briefly discuss.
+
+Hint 1 use color= argument to qplot or ggplot to color the point by the different traits
+
+Hint 2 use size=I(3) as an argument to increase the point size (you can play with different values)
+
+Hint 3 when plotting the Region data, the colors will be easier to interpret if you include the following at the end of the line with your qplot command: ` + scale_color_brewer(type=”div”)` This specifies that a diverging set of colors is used. (Try plotting with and without this).
+
+```{r}
+qplot(V1, V2, data=mergegenodata, color=Amylose.content, size=I(3))
+qplot(V1, V2, data=mergegenodata, color=Pericarp.color, size=I(3))
+qplot(V1, V2, data=mergegenodata, color=Region, size=I(3)) +scale_color_brewer(type="div") 
+```
+
+Higher amylose content on left sides and a lil lower on the right one.
+Mostly light on top 2, more mixed on the bottom left.
+Africa, America more on right with some asian/mid east
+Mostly S. Asian on the bottom left
+Mixed more top left
+
+how do we know which individual belongs in which population? We can take an alternative approach and assign individuals to specific population classes with PSMix package.
+
+First we have to convert our genotypes to the form that PSMix expects. PSMix wants a separate row for each allele (two rows for each variety). A couple of the commands below are a bit complex. I will explain them in lab after this has been run.
+
+```{r}
+#Convert to character matrix.  The apply function applies a function (in this case as.character()) either to every column or every row in the data.
+data.geno.2500.c <- apply(data.geno.2500,2,as.character)
+
+#Create a new Matrix to hold reformatted data
+data.geno.2500.ps <- matrix("",nrow=nrow(data.geno.2500.c)*2,ncol=ncol(data.geno.2500.c))
+#Twice as many rows, same number of columns
+
+#for each row of genotypes, create 2 rows, one with the first allele and one with the second allele.
+for (i in 1:nrow(data.geno.2500.c)) {
+  data.geno.2500.ps[(i-1)*2+1,] <- substr(data.geno.2500.c[i,],1,1)
+  data.geno.2500.ps[(i-1)*2+2,] <- substr(data.geno.2500.c[i,],2,2)
+}
+
+#First code: For each row in data set, if i=1, then fill in 1-1*2+1= give us all odd rows in data set. Substring= first of all the entries
+#Second code: gives us odd rows
+
+#Example on how substringing looks or works like
+myname<-"ElizaTsang"
+substr(myname,1,5)
+substr(myname,6,10)
+
+#i is basically: it should be a parameter but don't want it to show up in ledger
+```
+
+```{r}
+library(PSMix)
+
+#load in my pre-run data
+load("/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/ps4.2500.RData")
+```
+#if you prefer, uncomment the lines below to run on your own.
+#run on K=4 popultions and 2500 markers; may take 15-30 minutes
+#system.time(ps4 <- PSMix(K=4,data.geno.2500.ps,eps=1e-05,verbose=T))
+#save(ps4,file="../data/ps4.2500.RData")
+
+#2500 markers K = 5 > 1 hour run time
+#system.time(ps5 <- PSMix(K=5,data.geno.2500.ps,eps=1e-05,verbose=T))
+#save(ps5,file="../data/ps5.2500.RData")
+```{r}
+names(ps4) #shows us elements within ps4
+head(ps4$AmPr)
+round(head(ps4$AmPr),3) #round to 3 decimal places to make it easier to see
+#In the AmPr table, each row is an individual and each column represents one of the hypothesized populations. Genomes with substantial contributions from two ancestral genomes are said to be admixed
+
+#he second component, AmID, shows an assignment of each individual to a single ancestral population. Of course this can be somewhat problematic for heavily admixed individuals.
+
+head(ps4$AmId)
+
+#If you want to know how many individuals were assigned to each population, you can use table()
+
+table(ps4$AmId)
+```
+
+The PSMix output must be reformatted in order to plot it well. Not all of the commands are fully explained below. 
+
+The first step is to combine the useful columns from PSMix together into a single data frame. This is accomplished using cbind() (“column bind”) to paste the columns together.
+
+```{r}
+ps4.df <- as.data.frame(cbind(round(ps4$AmPr,3),ps4$AmId))
+head(ps4.df) #look at the new data frame
+
+#Next add useful column names
+colnames(ps4.df) <- c(paste("pop",1:(ncol(ps4.df)-1),sep=""),"popID")
+head(ps4.df) #look at the new data frame
+```
+pop1, pop2, pop3, pop4, ID
+
+1	0.000	1.000	0.000	0.000	2
+
+2	0.000	0.000	1.000	0.000	3
+
+3	0.000	0.000	0.126	0.874	4
+
+4	0.385	0.263	0.037	0.315	1
+
+5	0.017	0.000	0.134	0.850	4
+
+For plotting, helpful to order the samples based on population identity and composition. First we calculate the largest proportion of the genome from a single ancestral population for each individual. 
+Use *apply()*, which applies a function across every row or column of a data frame. 
+
+```{r}
+maxGenome <- apply(ps4$AmPr,1,max)
+#  apply to AmPr data, 1 ancestral population, largest)
+maxGenome
+
+#now we order the varieties by their prediced population membership and their degree of admixture.
+ps4.df <- ps4.df[order(ps4.df$popID,-maxGenome),]
+#Add a column for sample index
+ps4.df$sampleID <- factor(1:413)
+head(ps4.df)
+```
+[1] 1.0000000 1.0000000 0.8736307 0.3846553 0.8497657
+(Refer to table before this command)
+1)pop2 is biggest with 1.000
+2)pop3 same
+3)pop4 had 0.874
+4)pop1 had 0.385
+5)pop4 had 0.850
+
+The next step is to take the data from “wide” format to “long” format. qplot() needs one observation per row, whereas now we have 5 observations per row. We use melt() 
+
+```{r}
+library(reshape2)
+ps4.df.melt <- melt(ps4.df,id.vars=c("popID","sampleID"))
+head(ps4.df.melt) #look a the melted data set.
+```
+
+Finally we are ready to plot the results. In the plot produced below, each column is a single rice variety. The colors correspond to ancestral genomes. Do you see any evidence of admixture?
+```{r}
+library(ggplot2)
+
+pl <- ggplot(aes(x=sampleID, y=value, color=variable, fill=variable), data=ps4.df.melt)
+pl <- pl + geom_bar(stat="identity")
+pl <- pl + ylab("genome proportion") + scale_color_brewer(type="div") + scale_fill_brewer(type="div")
+
+pl
+```
+
+```{r}
+geno.mds$popID <- factor(ps4$AmId) #this only works because the order of the varieties is the same in geno.mds and ps4
+head(geno.mds$popID)
+#Also add the admixture proportions for future use
+#first give them some useful names
+colnames(ps4$AmPr) <- paste("pr",1:4,sep="")
+
+geno.mds2 <- cbind(geno.mds,ps4$AmPr)
+head(geno.mds)
+```
+
+```{r}
+plot(geno.mds2)
+qplot(V1, V2, data=geno.mds2, color=popID, size=I(2))
+save(data.pheno,geno.mds2,file="data_from_SNP_lab.Rdata")
+```
+
+**Exercise 5:** 
+
+* Plot your chosen trait data
+  * as a **single histogram** for all of the data
+  * as **separate histograms** for each of the 4 population assignments made by PSMix
+  * as a **boxplot** separated by population. 
+* Based on these histograms do you think that your trait varies by population? 
+* **BONUS** Try using the "violin" geom.  What is this showing?
+  
+Hint: you will need to use a different binwidth (or don't specify it at all and let R choose the default).  Hint: the relevant column names for population are "popID".  
+
+```{r}
+head(geno.mds2)
+
+data.pheno.mds <- merge(geno.mds2,data.pheno,by="row.names",all=T) #even if you already have this object, rerun it so that the AmID and pr1-4 columns are brought in
+
+library(ggplot2)
+pl <- ggplot(data.pheno.mds,aes(x=Amylose.content)) + geom_histogram()
+pl
+```
+
+```{r}
+pl <- ggplot(data=data.pheno.mds,aes(x=Amylose.content)) #create the basic plot object
+pl <- pl + geom_histogram(binwidth=3) #tell R that we want a histogram, with binwidth of 3
+pl <- pl + facet_wrap(facets= ~ Region, ncol=3) # a separate plot ("facet") for each region, arranged in 3 columns
+pl <- pl + ggtitle("Amylose Content") #add a title
+pl #display the plot
+```
+
+```{r}
+pl <- ggplot(data=data.pheno.mds,aes(x=Region,y=Amylose.content)) + geom_boxplot()
+pl
+```
+
+```{r}
+pl3 <- ggplot(data=data.pheno.mds,aes(x=Region,y=Flowering.time.at.Faridpur)) + geom_boxplot()
+pl3
+
+pl2 <- ggplot(data=data.pheno.mds,aes(x=Flowering.time.at.Faridpur))
+pl2 <- pl2 + geom_histogram(binwidth=5) 
+pl2 <- pl2 + facet_wrap(facets= ~ Region, ncol=3) 
+pl2 <- pl2 + ggtitle("Faridpur Flowering Time") 
+pl2
+
+pl4 <- ggplot(data.pheno.mds,aes(x=Flowering.time.at.Faridpur)) + geom_histogram()
+pl4
+
+pl5<- ggplot(data=data.pheno.mds,aes(x=Region,y=Flowering.time.at.Faridpur)) + geom_violin()
+pl5
+```
+
+**Exercise 6:** 
+
+* Obtain the mean of your trait for each of the 4 PSMix populations.
+* Perform an ANOVA for your trait to test if it varies significantly by population.  Show your code, the ANOVA output, and provide an interpretation.
+* Discuss: Do your results present a problem for GWAS?
+
+```{r}
+mean(data.pheno.mds$Amylose.content,na.rm=T)
+tapply(X=data.pheno.mds$Amylose.content,INDEX=data.pheno.mds$Region,FUN=min,na.rm=T)
+#The first argument to tapply() is the data we want to summarize, the second argument is how the data should be split, the third argument is the function we want to apply (min in this case) and the fourth argument are additional arguments to be passed to the function listed in the argument.
+aov1 <- aov(Amylose.content ~ Region,data=data.pheno.mds) #1-way ANOVA for Amylose.content by Region
+summary(aov1)
+```
+
+```{r}
+mean(data.pheno.mds$Flowering.time.at.Faridpur,na.rm=T)
+tapply(X=data.pheno.mds$Flowering.time.at.Faridpur,INDEX=data.pheno.mds$Region,FUN=min,na.rm=T)
+aov2 <- aov(Flowering.time.at.Faridpur ~ Region,data=data.pheno.mds) #1-way ANOVA for Faridpur Flowering Time by Region
+summary(aov2)
+```
+
+**Exercise 7:** Describe and discuss the differences in the analysis with and without population structure correction.  Which do you think is the better one to follow-up on, and why?
+
+```{r}
+#load information about snp chromosome and position
+snpinfo <- read.csv("/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/snpInfo.csv",row.names=1)
+
+head(snpinfo) #note one column for chromosome and one for position (in base pairs)
+
+# you will need the data.geno file from the previous lab.  If you don't have it in your workspace, reload it
+data.geno <- read.csv("/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/Rice_44K_genotypes.csv.gz", row.names=1, na.strings=c("NA","00")) 
+
+#next merge the genotype information with the phenotype and population info:
+head(data.pheno.mds) #note: need to get rownames assigned correctly again (they were lost after the merge)
+rownames(data.pheno.mds) <- data.pheno.mds$Row.names
+data.geno.pheno <- merge(data.pheno.mds,data.geno,by="row.names")
+#you can ignore the warning 
+```
+
+```{r}
+library(SNPassoc) #load the package that does the associations
+#if you get an error that the package is not available, use install.packages("SNPassoc") to install it.
+
+#create new data frames containing only chromosome 3 information.
+#grep() is the R version of the linux grep command that you saw in Ian's section.  So the command below extracts columns 1:47 and all chromosome 3 genotype columns
+data.geno.pheno3 <- data.geno.pheno[,c(1:47,grep("X3_",colnames(data.geno.pheno)))]
+snpinfo3 <- snpinfo[snpinfo$chr==3,]
+
+#convert SNPinfo to a format that SNPassoc can use
+snps3 <- setupSNP(data.geno.pheno3,48:ncol(data.geno.pheno3),sort=T,info=snpinfo3,sep="")
+```
+
+For the actual GWAS we will compare a model with and without correction for population structure. The correction method that we use, including ancestral genome proportions as co-variates, is a good first step. However it is often better to include a Kinship matrix of genetic relatedness. Since this tutorial was created an R package with state-of-the-art methods has been released. The package is GAPIT website and paper. If you are going to do a serious GWAS you should consider using GAPIT.
+
+We use a co-dominant model of allelic affects (allowing each allele to act additively). You can experiment with other models if you would like.
+
+```{r}
+#analysis without population structure correction
+#this takes ~ 5 minutes to run.
+wg3 <- WGassociation(Flowering.time.at.Faridpur,data=snps3,model="co",genotypingRate=50)
+plot(wg3,print.label.SNPs=FALSE)
+
+#the p-values for the co-dominant model are extracted by using the codominant() function 
+#determine the number of significant SNPs (p < 0.00001):
+sum(codominant(wg3) < 1e-5)
+```
+
+Population stratification can lead to an inflated number of false positives. We can ask if this is occurring in our data by comparing the observed distribution of p-values against the expected distribution of p-values assuming no GWAS hits. Because we expect the VAST majority of the SNPS to not have an association, the expected and observed distributions should match except for maybe a few SNPs at the very tail. This is a modified version of a quantile-quantile (qq) plot. 
+
+```{r}
+qqpval(codominant(wg3)) #remember that codominant(wg3) returns the observed p-values.
+```
+The blue points compare the observed and expected p-values. The diagonal line shows where these points would be if the two distributions were equal. Do you think there is evidence of population structure confounding our result?
+
+We can begin to correct for population structure by including the predicted population membership from Tuesday’s lab as co-factors in the analysis.
+
+```{r}
+#analysis with population structure correction:
+wg3.corrected <- WGassociation(Alu.Tol ~ pr1 + pr2 + pr3 + pr4,data=snps3,model="co",genotypingRate=50)
+#analysis with population structure correction.
+plot(wg3.corrected,print.label.SNPs=FALSE)
+sum(codominant(wg3.corrected) < 1e-5)
+
+#Now take a look at the qqplot for the corrected analysis:
+qqpval(codominant(wg3.corrected))
+```
+
+Better, but still the p-values are inflated. The next step would be to create and include a kinship matrix and run some more sophisticated analyses in GAPIT. Unfortunately that is outside the scope of this lab. Still the most significant SNPs may very well be real.
+
+Next we want to know what SNPs were significant @ p < 0.00001. We can do that as follows:
+```{r}
+#use the square bracked extractions command to extract all rows where the SNP p-value is less than 1e-5
+snpinfo3[codominant(wg3.corrected) < 1e-5,]
+
+#if we want to add the pvals to the output:
+cbind(snpinfo3[codominant(wg3.corrected) < 1e-5,],codominant(wg3.corrected)[codominant(wg3.corrected) < 1e-5])
+```
+
+**Exercise 8:** Look for genes close to your SNP at the [rice genome browser](http://rice.plantbiology.msu.edu/cgi-bin/gbrowse/rice/).  Pick a significant SNP from your analysis and enter its chromosome and position in the search box.  The browser wants you to enter a start and stop position, so for example, you should enter "Chr3:30449857..30449857" and then choose "show 20kb" from the pulldown menu on the left hand side.  Report the SNP you chose and the three closest genes.  These are candidate genes for determining the phenotype of your trait of interest in the rice population.  Briefly discuss these genes as possible candidates for the GWAS peak.  (Include a screenshot of the genome browser)
+
+
+```{r}
+knitr::include_graphics("~/home/ubuntu/Assignment_4_Tsang.Eliza/RiceSNPData/Rice_Genome_SNP.png")
+```
